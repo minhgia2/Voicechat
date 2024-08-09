@@ -1,57 +1,96 @@
-import os
 import sys
-import json
-import time
+import signal
+import atexit
+import logging
+import threading
 import requests
-import websocket
-from keep_alive import keep_alive
 
-# Thiết lập trạng thái trực tuyến, không làm phiền hoặc nghỉ ngơi
-status = "online"
+# Thiết lập logger
+logger = logging.getLogger(__name__)
 
-# Nhập ID máy chủ và kênh của bạn
-GUILD_ID = 1081611251462975528
-CHANNEL_ID = 1081611252033388699
+# Thiết lập thời gian mặc định là 3600 giây (1 giờ)
+DEFAULT_TIMEOUT = 3600
 
-# Thiết lập token Discord
-usertoken = os.getenv("TOKEN")
-if not usertoken:
-    print("[LỖI] Vui lòng thêm token vào Secrets.")
-    sys.exit()
+# Biến toàn cục để theo dõi bộ hẹn giờ giữ hoạt động
+global keep_alive_timer
 
-# Thiết lập header cho các yêu cầu API
-headers = {"Authorization": usertoken, "Content-Type": "application/json"}
+# Định nghĩa hàm giữ hoạt động
+def keep_alive(url=None, path="/", port=80, timeout=DEFAULT_TIMEOUT):
+    """
+    Giữ cho dịch vụ hoạt động bằng cách gửi yêu cầu GET đến URL chỉ định theo khoảng thời gian đều đặn.
 
-# Kiểm tra tính hợp lệ của token
-validate = requests.get('https://discord.com/api/v9/users/@me', headers=headers)
-if validate.status_code != 200:
-    print("[LỖI] Token của bạn có thể không hợp lệ. Vui lòng kiểm tra lại.")
-    sys.exit()
+    Tham số:
+        url (str): URL để gửi yêu cầu giữ hoạt động.
+        path (str): Đường dẫn để thêm vào URL.
+        port (int): Số cổng để sử dụng cho yêu cầu.
+        timeout (int): Khoảng thời gian giữa các yêu cầu giữ hoạt động (tính bằng giây).
+    """
+    # Biến toàn cục
+    global keep_alive_timer
 
-# Lấy thông tin người dùng
-userinfo = requests.get('https://discord.com/api/v9/users/@me', headers=headers).json()
-username = userinfo["username"]
-discriminator = userinfo["discriminator"]
-userid = userinfo["id"]
+    # Kiểm tra giá trị thời gian hết hạn
+    if timeout <= 0:
+        logger.warning("Giá trị thời gian hết hạn phải lớn hơn 0. Sử dụng giá trị mặc định.")
+        timeout = DEFAULT_TIMEOUT
 
-# Định nghĩa hàm joiner để kết nối với kênh thoại
-def joiner(token, status, guild_id, channel_id):
-    # Thiết lập kết nối WebSocket
-    ws = websocket.WebSocketApp(f"wss://gateway.discord.gg/?v=9&encoding=json",
-                              header=headers,
-                              on_message=on_message)
-    ws.on_open = on_open
-    ws.run_forever()
+    # Định nghĩa header cho yêu cầu
+    headers = {
+        "User-Agent": "Keep-Alive/1.0",
+        "Content-Type": "application/json",
+    }
 
-# ... (mã còn lại vẫn giữ nguyên)
+    # Định nghĩa dữ liệu cho yêu cầu
+    data = {"status": "online"}
 
-# Định nghĩa hàm run_joiner để chạy hàm joiner
-def run_joiner():
-    # Xóa màn hình
-    os.system("clear")
-    print(f"Đã đăng nhập với tài khoản {username}{discriminator} ({userid}).")
-    joiner(usertoken, status, GUILD_ID, CHANNEL_ID)
+    # Định nghĩa phương thức yêu cầu
+    method = "GET"
 
-# Giữ cho dịch vụ hoạt động và chạy hàm joiner
-keep_alive()
-run_joiner()
+    # Định nghĩa hàm yêu cầu
+    def request():
+        try:
+            # Kiểm tra giá trị của url trước khi thực hiện phép toán cộng
+            if url is not None:
+                url_with_path = url + path
+            else:
+                url_with_path = path
+
+            response = requests.request(method, url_with_path, headers=headers, data=json.dumps(data))
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Không thể gửi yêu cầu giữ hoạt động: {e}")
+
+    # Định nghĩa hàm giữ hoạt động
+    def keep_alive_func():
+        global keep_alive_timer
+        while True:
+            try:
+                request()
+            except Exception as e:
+                logger.error(f"Yêu cầu giữ hoạt động thất bại: {e}")
+            finally:
+                keep_alive_timer = threading.Timer(timeout, keep_alive_func)
+                keep_alive_timer.start()
+
+    # Đăng ký hàm giữ hoạt động để chạy khi thoát
+    atexit.register(keep_alive_func)
+
+    # Bắt đầu hàm giữ hoạt động
+    keep_alive_func()
+
+# Định nghĩa hàm để dừng bộ hẹn giờ giữ hoạt động
+def stop_keep_alive():
+    """
+    Dừng bộ hẹn giờ và yêu cầu giữ hoạt động.
+    """
+    global keep_alive_timer
+    if keep_alive_timer:
+        keep_alive_timer.cancel()
+        keep_alive_timer = None
+
+# Đăng ký xử lý tín hiệu để dừng bộ hẹn giờ giữ hoạt động khi quá trình nhận được tín hiệu SIGTERM
+def signal_handler(sig, frame):
+    stop_keep_alive()
+    sys.exit(0)
+
+# Đăng ký xử lý tín hiệu SIGTERM
+signal.signal(signal.SIGTERM, signal_handler)
