@@ -2,6 +2,7 @@ import sys
 import signal
 import atexit
 import logging
+import threading
 
 # Thiết lập logger
 logger = logging.getLogger(__name__)
@@ -34,7 +35,7 @@ def keep_alive(url=None, path="/", port=80, timeout=DEFAULT_TIMEOUT):
     # Định nghĩa header cho yêu cầu
     headers = {
         "User-Agent": "Keep-Alive/1.0",
-        "Content-Type": "application/json",
+        "Content-type": "application/json",
     }
 
     # Định nghĩa dữ liệu cho yêu cầu
@@ -60,7 +61,8 @@ def keep_alive(url=None, path="/", port=80, timeout=DEFAULT_TIMEOUT):
             except Exception as e:
                 logger.error(f"Yêu cầu giữ hoạt động thất bại: {e}")
             finally:
-                keep_alive_timer = timer(timeout, keep_alive_func)
+                keep_alive_timer = threading.Timer(timeout, keep_alive_func)
+                keep_alive_timer.start()
 
     # Đăng ký hàm giữ hoạt động để chạy khi thoát
     atexit.register(keep_alive_func)
@@ -85,11 +87,3 @@ def signal_handler(sig, frame):
 
 # Đăng ký xử lý tín hiệu SIGTERM
 signal.signal(signal.SIGTERM, signal_handler)
-
-# Nhập lớp Timer từ mô-đun threading
-try:
-    from threading import Timer
-except ImportError:
-    logger.error("threading.Timer không có sẵn trong phiên bản Python này.")
-else:
-    timer = Timer.start_new_thread
