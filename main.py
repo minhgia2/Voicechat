@@ -4,29 +4,29 @@ import json
 import time
 import requests
 import websocket
-from keep_alive import keep_alive, is_port_open, scan_ports
-import platform  # Import the platform module
+from keep_alive import keep_alive
 
 status = "online"  # online/dnd/idle
 
-# Your Discord token
-DISCORD_TOKEN = "NDM5NzM1NjU5OTQzNTU5MTY5.GKL6dj.usVOga-Wp7CD_goIPd_UHpZBhrUnkkhMnx8kt4"
-
-GUILD_ID = 1081611251462975528
-CHANNEL_ID = 1081611252033388699
-SELF_MUTE = True
-SELF_DEAF = False
+# Your server and channel IDs
+GUILD_ID = ADD_YOUR_SERVER_ID_HERE
+CHANNEL_ID = ADD_YOUR_CHANNEL_ID_HERE
 
 # Set the Discord token
-usertoken = DISCORD_TOKEN
+usertoken = os.getenv("TOKEN")
+if not usertoken:
+    print("[ERROR] Please add a token inside Secrets.")
+    sys.exit()
 
 headers = {"Authorization": usertoken, "Content-Type": "application/json"}
 
+# Validate the token
 validate = requests.get('https://canary.discord.com/api/v9/users/@me', headers=headers)
 if validate.status_code != 200:
     print("[ERROR] Your token might be invalid. Please check it again.")
     sys.exit()
 
+# Get user information
 userinfo = requests.get('https://canary.discord.com/api/v9/users/@me', headers=headers).json()
 username = userinfo["username"]
 discriminator = userinfo["discriminator"]
@@ -38,18 +38,12 @@ def joiner(token, status):
 
 def run_joiner():
     # Clear the screen
-    if platform.system() == "Windows":
-        os.system("cls")
-    else:
-        os.system("clear")
-
+    os.system("clear")
     print(f"Logged in as {username}#{discriminator} ({userid}).")
     while True:
         joiner(usertoken, status)
         time.sleep(30)
 
-# Scan for open ports and keep the service alive
+# Keep the service alive and run the joiner function
 keep_alive()
-
-# Run the joiner function
 run_joiner()
