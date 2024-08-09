@@ -37,7 +37,7 @@ userid = userinfo["id"]
 # Define the joiner function to connect to the voice channel
 def joiner(token, status, guild_id, channel_id):
     # Establish a WebSocket connection
-    environ = {"HTTP_AUTHORIZATION": token, "HTTP_ORIGIN": "https://discord.com"}
+    environ = {"HTTP_AUTHORIZATION": token, "HTTP_ORIGIN": "https://discord.com", "PATH_INFO": "/"}
     socket = None
     rfile = None
     ws = websocket.WebSocket(environ, socket, rfile)
