@@ -22,6 +22,15 @@ def scan_ports(host, start_port, end_port):
         except socket.error as e:
             logger.error(f"Error scanning port {port}: {e}")
 
+def is_port_open(host, port):
+    """
+    Check if a port is open on the specified host.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(2)
+        result = sock.connect_ex((host, port))
+        return result == 0
+
 def keep_alive():
     """
     Keep the service alive by binding it to an open port.
