@@ -9,8 +9,8 @@ from keep_alive import keep_alive
 status = "online"  # online/dnd/idle
 
 # Your server and channel IDs
-GUILD_ID = ADD_YOUR_SERVER_ID_HERE
-CHANNEL_ID = ADD_YOUR_CHANNEL_ID_HERE
+GUILD_ID = 1081611251462975528
+CHANNEL_ID = 1081611252033388699
 
 # Set the Discord token
 usertoken = os.getenv("TOKEN")
