@@ -34,7 +34,6 @@ userid = userinfo["id"]
 
 def joiner(token, status, guild_id, channel_id):
     # Establish a WebSocket connection
-    websocket.enableTrace(False)  # Disable tracing
     ws = websocket.WebSocketApp(f"wss://gateway.discord.gg/?v=9&encoding=json",
                               header=headers,
                               on_message=on_message)
