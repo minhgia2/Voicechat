@@ -3,6 +3,7 @@ import signal
 import atexit
 import logging
 import threading
+import requests  # Thêm dòng này để nhập mô-đun requests
 
 # Thiết lập logger
 logger = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ def keep_alive(url=None, path="/", port=80, timeout=DEFAULT_TIMEOUT):
     # Định nghĩa header cho yêu cầu
     headers = {
         "User-Agent": "Keep-Alive/1.0",
-        "Content-type": "application/json",
+        "Content-Type": "application/json",
     }
 
     # Định nghĩa dữ liệu cho yêu cầu
