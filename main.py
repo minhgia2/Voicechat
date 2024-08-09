@@ -1,96 +1,113 @@
+import os
 import sys
-import signal
-import atexit
-import logging
-import threading
+import json
+import time
 import requests
+import websocket
+from keep_alive import keep_alive
 
-# Thiết lập logger
-logger = logging.getLogger(__name__)
+# Thiết lập trạng thái trực tuyến, không làm phiền hoặc nghỉ ngơi
+status = "online"
 
-# Thiết lập thời gian mặc định là 3600 giây (1 giờ)
-DEFAULT_TIMEOUT = 3600
+# Nhập ID máy chủ và kênh của bạn
+GUILD_ID = 1081611251462975528
+CHANNEL_ID = 1081611252033388699
 
-# Biến toàn cục để theo dõi bộ hẹn giờ giữ hoạt động
-global keep_alive_timer
+# Thiết lập token Discord
+usertoken = os.getenv("TOKEN")
+if not usertoken:
+    print("[LỖI] Vui lòng thêm token vào Secrets.")
+    sys.exit()
 
-# Định nghĩa hàm giữ hoạt động
-def keep_alive(url=None, path="/", port=80, timeout=DEFAULT_TIMEOUT):
-    """
-    Giữ cho dịch vụ hoạt động bằng cách gửi yêu cầu GET đến URL chỉ định theo khoảng thời gian đều đặn.
+# Thiết lập header cho các yêu cầu API
+headers = {"Authorization": usertoken, "Content-Type": "application/json"}
 
-    Tham số:
-        url (str): URL để gửi yêu cầu giữ hoạt động.
-        path (str): Đường dẫn để thêm vào URL.
-        port (int): Số cổng để sử dụng cho yêu cầu.
-        timeout (int): Khoảng thời gian giữa các yêu cầu giữ hoạt động (tính bằng giây).
-    """
-    # Biến toàn cục
-    global keep_alive_timer
+# Kiểm tra tính hợp lệ của token
+validate = requests.get('https://discord.com/api/v9/users/@me', headers=headers)
+if validate.status_code != 200:
+    print("[LỖI] Token của bạn có thể không hợp lệ. Vui lòng kiểm tra lại.")
+    sys.exit()
 
-    # Kiểm tra giá trị thời gian hết hạn
-    if timeout <= 0:
-        logger.warning("Giá trị thời gian hết hạn phải lớn hơn 0. Sử dụng giá trị mặc định.")
-        timeout = DEFAULT_TIMEOUT
+# Lấy thông tin người dùng
+userinfo = requests.get('https://discord.com/api/v9/users/@me', headers=headers).json()
+username = userinfo["username"]
+discriminator = userinfo["discriminator"]
+userid = userinfo["id"]
 
-    # Định nghĩa header cho yêu cầu
-    headers = {
-        "User-Agent": "Keep-Alive/1.0",
-        "Content-Type": "application/json",
+# Định nghĩa hàm joiner để kết nối với kênh thoại
+def joiner(token, status, guild_id, channel_id):
+    # Thiết lập kết nối WebSocket
+    ws = websocket.WebSocketApp(f"wss://gateway.discord.gg/?v=9&encoding=json",
+                              header=headers,
+                              on_message=on_message)
+    ws.on_open = on_open
+    ws.run_forever()
+
+# Định nghĩa hàm xử lý sự kiện khi có tin nhắn mới
+def on_message(ws, message):
+    # Xử lý các sự kiện và tin nhắn WebSocket
+    data = json.loads(message)
+    if data.get("op") == 10:
+        heartbeat_interval = data["d"]["heartbeat_interval"]
+        start_heartbeat(ws, heartbeat_interval)
+    elif data.get("op") == 11:
+        # Xử lý ACK nhịp tim
+        pass
+    elif data.get("op") == 0 and data["t"] == "VOICE_STATE_UPDATE":
+        # Xử lý cập nhật trạng thái thoại
+        voice_state = data["d"]
+        if voice_state["channel_id"] == str(CHANNEL_ID):
+            # Tham gia kênh thoại
+            join_voice_channel(ws, voice_state)
+        else:
+            # Rời khỏi kênh thoại
+            leave_voice_channel(ws, voice_state)
+
+# Định nghĩa hàm để bắt đầu nhịp tim
+def start_heartbeat(ws, interval):
+    # Gửi nhịp tim để giữ kết nối hoạt động
+    def run(*args):
+        payload = {"op": 1, "d": None}
+        ws.send(json.dumps(payload))
+
+    heartbeat = time.time()
+    while True:
+        time.sleep(interval / 1000)
+        if time.time() - heartbeat > interval / 1000:
+            break
+
+    ws.keep_running = False
+
+# Định nghĩa hàm để tham gia kênh thoại
+def join_voice_channel(ws, voice_state):
+    # Gửi payload cập nhật trạng thái thoại để tham gia kênh
+    payload = {
+        "op": 4,
+        "d": {
+            "guild_id": GUILD_ID,
+            "channel_id": CHANNEL_ID,
+            "self_mute": False,
+            "self_deaf": False
+        }
     }
+    ws.send(json.dumps(payload))
 
-    # Định nghĩa dữ liệu cho yêu cầu
-    data = {"status": "online"}
+# Định nghĩa hàm để rời khỏi kênh thoại
+def leave_voice_channel(ws, voice_state):
+    # Gửi payload cập nhật trạng thái thoại để rời khỏi kênh
+    payload = {
+        "op": 4,
+        "d": voice_state
+    }
+    ws.send(json.dumps(payload))
 
-    # Định nghĩa phương thức yêu cầu
-    method = "GET"
+# Định nghĩa hàm để chạy hàm joiner
+def run_joiner():
+    # Xóa màn hình
+    os.system("clear")
+    print(f"Đã đăng nhập với tài khoản {username}{discriminator} ({userid}).")
+    joiner(usertoken, status, GUILD_ID, CHANNEL_ID)
 
-    # Định nghĩa hàm yêu cầu
-    def request():
-        try:
-            # Kiểm tra giá trị của url trước khi thực hiện phép toán cộng
-            if url is not None:
-                url_with_path = url + path
-            else:
-                url_with_path = path
-
-            response = requests.request(method, url_with_path, headers=headers, data=json.dumps(data))
-            response.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Không thể gửi yêu cầu giữ hoạt động: {e}")
-
-    # Định nghĩa hàm giữ hoạt động
-    def keep_alive_func():
-        global keep_alive_timer
-        while True:
-            try:
-                request()
-            except Exception as e:
-                logger.error(f"Yêu cầu giữ hoạt động thất bại: {e}")
-            finally:
-                keep_alive_timer = threading.Timer(timeout, keep_alive_func)
-                keep_alive_timer.start()
-
-    # Đăng ký hàm giữ hoạt động để chạy khi thoát
-    atexit.register(keep_alive_func)
-
-    # Bắt đầu hàm giữ hoạt động
-    keep_alive_func()
-
-# Định nghĩa hàm để dừng bộ hẹn giờ giữ hoạt động
-def stop_keep_alive():
-    """
-    Dừng bộ hẹn giờ và yêu cầu giữ hoạt động.
-    """
-    global keep_alive_timer
-    if keep_alive_timer:
-        keep_alive_timer.cancel()
-        keep_alive_timer = None
-
-# Đăng ký xử lý tín hiệu để dừng bộ hẹn giờ giữ hoạt động khi quá trình nhận được tín hiệu SIGTERM
-def signal_handler(sig, frame):
-    stop_keep_alive()
-    sys.exit(0)
-
-# Đăng ký xử lý tín hiệu SIGTERM
-signal.signal(signal.SIGTERM, signal_handler)
+# Giữ cho dịch vụ hoạt động và chạy hàm joiner
+keep_alive()
+run_joiner()
