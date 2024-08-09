@@ -37,7 +37,7 @@ userid = userinfo["id"]
 
 def joiner(token, status):
     ws = websocket.WebSocket()
-    ws.connect('wss://gateway.discord.gg/?v=9&encoding=json')
+    ws.connect('wss://gateway.discord.gg/?v=10&encoding=json')
     start = json.loads(ws.recv())
     heartbeat = start['d']['heartbeat_interval']
     auth = {"op": 2,"d": {"token": token,"properties": {"$os": "Windows 10","$browser": "Google Chrome","$device": "Windows"},"presence": {"status": status,"afk": False}},"s": None,"t": None}
