@@ -3,88 +3,93 @@ import signal
 import atexit
 import logging
 
+# Thiết lập logger
 logger = logging.getLogger(__name__)
 
-# Set the default timeout to 3600 seconds (1 hour)
+# Thiết lập thời gian mặc định là 3600 giây (1 giờ)
 DEFAULT_TIMEOUT = 3600
 
-# Global variable to track the keep-alive timer
+# Biến toàn cục để theo dõi bộ hẹn giờ giữ hoạt động
 keep_alive_timer = None
 
+# Định nghĩa hàm giữ hoạt động
 def keep_alive(url=None, path="/", port=80, timeout=DEFAULT_TIMEOUT):
     """
-    Keep the service alive by sending a GET request to the specified URL at regular intervals.
+    Giữ cho dịch vụ hoạt động bằng cách gửi yêu cầu GET đến URL chỉ định theo khoảng thời gian đều đặn.
 
-    Args:
-        url (str): The URL to send the keep-alive request to.
-        path (str): The path to append to the URL.
-        port (int): The port number to use for the request.
-        timeout (int): The interval in seconds between keep-alive requests.
+    Tham số:
+        url (str): URL để gửi yêu cầu giữ hoạt động.
+        path (str): Đường dẫn để thêm vào URL.
+        port (int): Số cổng để sử dụng cho yêu cầu.
+        timeout (int): Khoảng thời gian giữa các yêu cầu giữ hoạt động (tính bằng giây).
     """
-    global keep_alive_timer
+    # Biến toàn cục
+    toàn cầu keep_alive_timer
 
-    # Validate the timeout value
+    # Kiểm tra giá trị thời gian hết hạn
     if timeout <= 0:
-        logger.warning("Timeout value must be greater than 0. Using default value.")
+        logger.warning("Giá trị thời gian hết hạn phải lớn hơn 0. Sử dụng giá trị mặc định.")
         timeout = DEFAULT_TIMEOUT
 
-    # Define the request headers
+    # Định nghĩa header cho yêu cầu
     headers = {
         "User-Agent": "Keep-Alive/1.0",
         "Content-Type": "application/json",
     }
 
-    # Define the request data
+    # Định nghĩa dữ liệu cho yêu cầu
     data = {"status": "online"}
 
-    # Define the request method
+    # Định nghĩa phương thức yêu cầu
     method = "GET"
 
-    # Define the request function
+    # Định nghĩa hàm yêu cầu
     def request():
         try:
             response = requests.request(method, url + path, headers=headers, data=json.dumps(data))
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to send keep-alive request: {e}")
+            logger.error(f"Không thể gửi yêu cầu giữ hoạt động: {e}")
 
-    # Define the keep-alive function
+    # Định nghĩa hàm giữ hoạt động
     def keep_alive_func():
-        nonlocal keep_alive_timer
-        while True:
+        toàn cầu keep_alive_timer
+        trong khi True:
             try:
                 request()
             except Exception as e:
-                logger.error(f"Keep-alive request failed: {e}")
-            finally:
+                logger.error(f"Yêu cầu giữ hoạt động thất bại: {e}")
+            cuối cùng:
                 keep_alive_timer = timer(timeout, keep_alive_func)
 
-    # Register the keep-alive function to run on exit
+    # Đăng ký hàm giữ hoạt động để chạy khi thoát
     atexit.register(keep_alive_func)
 
-    # Start the keep-alive function
+    # Bắt đầu hàm giữ hoạt động
     keep_alive_func()
 
+# Định nghĩa hàm để dừng bộ hẹn giờ giữ hoạt động
 def stop_keep_alive():
     """
-    Stop the keep-alive timer and requests.
+    Dừng bộ hẹn giờ và yêu cầu giữ hoạt động.
     """
-    global keep_alive_timer
-    if keep_alive_timer:
+    toàn cầu keep_alive_timer
+    nếu keep_alive_timer:
         keep_alive_timer.cancel()
         keep_alive_timer = None
 
-# Register a signal handler to stop the keep-alive timer when the process receives a SIGTERM signal
+# Đăng ký xử lý tín hiệu để dừng bộ hẹn giờ giữ hoạt động khi quá trình nhận được tín hiệu SIGTERM
 def signal_handler(sig, frame):
     stop_keep_alive()
     sys.exit(0)
 
+# Đăng ký xử lý tín hiệu SIGTERM
 signal.signal(signal.SIGTERM, signal_handler)
 
-# Import the Timer class from the threading module
+# Nhập lớp Timer từ mô-đun threading
 try:
     from threading import Timer
 except ImportError:
-    logger.error("threading.Timer is not available in this Python version.")
+    logger.error("threading.Timer không có sẵn trong phiên bản Python này.")
 else:
     timer = Timer.start_new_thread
