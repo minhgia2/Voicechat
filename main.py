@@ -1,11 +1,16 @@
+import asyncio
+import random
 import os
 import sys
 import json
 import time
 import requests
-import websocket
+from datetime import datetime
+from websocket import WebSocket, WebSocketException
 from keep_alive import keep_alive
 
+async def joiner(usertoken, status):
+    ws = WebSocket()
 status = "idle" #online/dnd/idle
 
 GUILD_ID = 1081611251462975528
