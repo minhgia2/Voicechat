@@ -1,15 +1,28 @@
-from flask import Flask
-from threading import Thread
+import time
+import requests
+import os
+import logging
 
-app = Flask('')
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-@app.route('/')
-def main():
-    return '<meta http-equiv="refresh" content="0; URL=https://phantom.fr.to/support"/>'
-
-def run():
-    app.run(host="0.0.0.0", port=8080)
+API_ENDPOINT = "https://canary.discord.com/api/v9/users/@me/channels"
 
 def keep_alive():
-    server = Thread(target=run)
-    server.start()
+    while True:
+        try:
+            headers = {"Authorization": os.getenv("TOKEN"), "Content-Type": "application/json"}
+            response = requests.get(API_ENDPOINT, headers=headers)
+            response.raise_for_status()  # Raise an exception for non-200 status codes
+
+            logger.info("Successfully kept alive.")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error occurred while keeping alive: {e}")
+        except KeyError:
+            logger.error("TOKEN environment variable not set. Please provide a valid token.")
+
+        time.sleep(600)
+
+if __name__ == "__main__":
+    keep_alive()
