@@ -17,12 +17,8 @@ def scan_ports(host, start_port, end_port):
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 sock.settimeout(2)
-                result = sock.connect_ex((host, port))
-                if result == 0:
-                    logger.info(f"Open port detected: {port}")
-                    return port  # Return the open port
-                else:
-                    logger.debug(f"Port {port} is closed.")
+                if not is_port_open(host, port):
+                    return port
         except socket.error as e:
             logger.error(f"Error scanning port {port}: {e}")
 
@@ -32,8 +28,7 @@ def is_port_open(host, port):
     """
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.settimeout(2)
-        result = sock.connect_ex((host, port))
-        return result == 0
+        return sock.connect_ex((host, port)) == 0
 
 def keep_alive():
     """
