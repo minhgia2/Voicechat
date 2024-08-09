@@ -4,6 +4,7 @@ import atexit
 import logging
 import threading
 import requests
+import json  # Thêm dòng này để nhập mô-đun json
 
 # Thiết lập logger
 logger = logging.getLogger(__name__)
@@ -48,13 +49,7 @@ def keep_alive(url=None, path="/", port=80, timeout=DEFAULT_TIMEOUT):
     # Định nghĩa hàm yêu cầu
     def request():
         try:
-            # Kiểm tra giá trị của url trước khi thực hiện phép toán cộng
-            if url is not None:
-                url_with_path = url + path
-            else:
-                url_with_path = path
-
-            response = requests.request(method, url_with_path, headers=headers, data=json.dumps(data))
+            response = requests.request(method, url + path, headers=headers, data=json.dumps(data))
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
             logger.error(f"Không thể gửi yêu cầu giữ hoạt động: {e}")
