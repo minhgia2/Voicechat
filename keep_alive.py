@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_TIMEOUT = 3600
 
 # Biến toàn cục để theo dõi bộ hẹn giờ giữ hoạt động
-keep_alive_timer = None
+global keep_alive_timer
 
 # Định nghĩa hàm giữ hoạt động
 def keep_alive(url=None, path="/", port=80, timeout=DEFAULT_TIMEOUT):
@@ -24,7 +24,7 @@ def keep_alive(url=None, path="/", port=80, timeout=DEFAULT_TIMEOUT):
         timeout (int): Khoảng thời gian giữa các yêu cầu giữ hoạt động (tính bằng giây).
     """
     # Biến toàn cục
-    toàn cầu keep_alive_timer
+    global keep_alive_timer
 
     # Kiểm tra giá trị thời gian hết hạn
     if timeout <= 0:
@@ -53,13 +53,13 @@ def keep_alive(url=None, path="/", port=80, timeout=DEFAULT_TIMEOUT):
 
     # Định nghĩa hàm giữ hoạt động
     def keep_alive_func():
-        toàn cầu keep_alive_timer
-        trong khi True:
+        global keep_alive_timer
+        while True:
             try:
                 request()
             except Exception as e:
                 logger.error(f"Yêu cầu giữ hoạt động thất bại: {e}")
-            cuối cùng:
+            finally:
                 keep_alive_timer = timer(timeout, keep_alive_func)
 
     # Đăng ký hàm giữ hoạt động để chạy khi thoát
@@ -73,8 +73,8 @@ def stop_keep_alive():
     """
     Dừng bộ hẹn giờ và yêu cầu giữ hoạt động.
     """
-    toàn cầu keep_alive_timer
-    nếu keep_alive_timer:
+    global keep_alive_timer
+    if keep_alive_timer:
         keep_alive_timer.cancel()
         keep_alive_timer = None
 
