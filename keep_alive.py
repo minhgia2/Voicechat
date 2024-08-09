@@ -1,46 +1,47 @@
+import socket
 import time
-import requests
-import os
 import logging
-import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-API_ENDPOINT = "https://canary.discord.com/api/v9/users/@me/channels"
-
-def validate_token(token):
-    headers = {"Authorization": token, "Content-Type": "application/json"}
-    response = requests.get(API_ENDPOINT, headers=headers)
-    return response.status_code == 200
+def scan_ports(host, start_port, end_port):
+    """
+    Scan for open ports within the specified range.
+    """
+    for port in range(start_port, end_port + 1):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(2)
+                result = sock.connect_ex((host, port))
+                if result == 0:
+                    logger.info(f"Open port detected: {port}")
+                else:
+                    logger.debug(f"Port {port} is closed.")
+        except socket.error as e:
+            logger.error(f"Error scanning port {port}: {e}")
 
 def keep_alive():
     """
-    Keep the Discord bot alive by periodically sending a GET request to the API endpoint.
+    Keep the service alive by binding it to an open port.
     """
-    token = os.getenv("TOKEN")
-    if not token:
-        logger.critical("TOKEN environment variable not set. Please provide a valid token.")
+    host = "0.0.0.0"  # Bind to all interfaces
+    start_port = 8000  # Start port number
+    end_port = 8999  # End port number
+
+    # Scan for open ports
+    scan_ports(host, start_port, end_port)
+
+    # Bind the service to an open port
+    open_ports = [port for port in range(start_port, end_port + 1) if is_port_open(host, port)]
+    if not open_ports:
+        logger.critical("No open ports detected. Please bind your service to at least one port.")
         return
 
-    if not validate_token(token):
-        logger.critical("Invalid token provided. Please check your token.")
-        return
-
-    while True:
-        try:
-            headers = {"Authorization": token, "Content-Type": "application/json"}
-            response = requests.get(API_ENDPOINT, headers=headers)
-            response.raise_for_status()  # Raise an exception for non-200 status codes
-
-            logger.info("Successfully kept alive.")
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Error occurred while keeping alive: {e}")
-        except Exception as e:
-            logger.critical(f"Unexpected error: {e}")
-
-        time.sleep(60)  # Sleep for 60 seconds
+    port = open_ports[0]
+    logger.info(f"Binding service to port {port}")
+    # Bind the service to the selected port (implementation specific)
 
 if __name__ == "__main__":
     keep_alive()
