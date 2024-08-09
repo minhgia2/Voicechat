@@ -1,58 +1,90 @@
-import socket
-import time
+import sys
+import signal
+import atexit
 import logging
-import platform
-from flask import Flask
-from threading import Thread
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def scan_ports(host, start_port, end_port):
+# Set the default timeout to 3600 seconds (1 hour)
+DEFAULT_TIMEOUT = 3600
+
+# Global variable to track the keep-alive timer
+keep_alive_timer = None
+
+def keep_alive(url=None, path="/", port=80, timeout=DEFAULT_TIMEOUT):
     """
-    Scan for open ports within the specified range.
+    Keep the service alive by sending a GET request to the specified URL at regular intervals.
+
+    Args:
+        url (str): The URL to send the keep-alive request to.
+        path (str): The path to append to the URL.
+        port (int): The port number to use for the request.
+        timeout (int): The interval in seconds between keep-alive requests.
     """
-    for port in range(start_port, end_port + 1):
+    global keep_alive_timer
+
+    # Validate the timeout value
+    if timeout <= 0:
+        logger.warning("Timeout value must be greater than 0. Using default value.")
+        timeout = DEFAULT_TIMEOUT
+
+    # Define the request headers
+    headers = {
+        "User-Agent": "Keep-Alive/1.0",
+        "Content-Type": "application/json",
+    }
+
+    # Define the request data
+    data = {"status": "online"}
+
+    # Define the request method
+    method = "GET"
+
+    # Define the request function
+    def request():
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.settimeout(2)
-                if not is_port_open(host, port):
-                    return port
-        except socket.error as e:
-            logger.error(f"Error scanning port {port}: {e}")
+            response = requests.request(method, url + path, headers=headers, data=json.dumps(data))
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to send keep-alive request: {e}")
 
-def is_port_open(host, port):
+    # Define the keep-alive function
+    def keep_alive_func():
+        nonlocal keep_alive_timer
+        while True:
+            try:
+                request()
+            except Exception as e:
+                logger.error(f"Keep-alive request failed: {e}")
+            finally:
+                keep_alive_timer = timer(timeout, keep_alive_func)
+
+    # Register the keep-alive function to run on exit
+    atexit.register(keep_alive_func)
+
+    # Start the keep-alive function
+    keep_alive_func()
+
+def stop_keep_alive():
     """
-    Check if a port is open on the specified host.
+    Stop the keep-alive timer and requests.
     """
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.settimeout(2)
-        return sock.connect_ex((host, port)) == 0
+    global keep_alive_timer
+    if keep_alive_timer:
+        keep_alive_timer.cancel()
+        keep_alive_timer = None
 
-def keep_alive():
-    """
-    Keep the service alive by binding it to an open port and running a Flask server.
-    """
-    # Your code for keeping the service alive
-    app = Flask('')
+# Register a signal handler to stop the keep-alive timer when the process receives a SIGTERM signal
+def signal_handler(sig, frame):
+    stop_keep_alive()
+    sys.exit(0)
 
-    @app.route('/')
-    def main():
-        return '<meta http-equiv="refresh" content="0; URL=https://phantom.fr.to/support"/>'
+signal.signal(signal.SIGTERM, signal_handler)
 
-    def run():
-        app.run(host="0.0.0.0", port=8080)
-
-    # Scan for an open port and bind the service to it
-    open_port = scan_ports("0.0.0.0", 8000, 8999)
-    if open_port is None:
-        logger.critical("No open ports detected. Please bind your service to at least one port.")
-        return
-
-    # Start the Flask server in a separate thread
-    server = Thread(target=run)
-    server.start()
-
-# Export functions to make them accessible from other modules
-__all__ = ["keep_alive", "is_port_open", "scan_ports"]
+# Import the Timer class from the threading module
+try:
+    from threading import Timer
+except ImportError:
+    logger.error("threading.Timer is not available in this Python version.")
+else:
+    timer = Timer.start_new_thread
