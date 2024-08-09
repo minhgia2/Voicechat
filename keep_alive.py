@@ -1,6 +1,7 @@
 import socket
 import time
 import logging
+import platform  # Import the platform module
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -35,22 +36,8 @@ def keep_alive():
     """
     Keep the service alive by binding it to an open port.
     """
-    host = "0.0.0.0"  # Bind to all interfaces
-    start_port = 8000  # Start port number
-    end_port = 8999  # End port number
+    # Your code for keeping the service alive
+    pass
 
-    # Scan for open ports
-    scan_ports(host, start_port, end_port)
-
-    # Bind the service to an open port
-    open_ports = [port for port in range(start_port, end_port + 1) if is_port_open(host, port)]
-    if not open_ports:
-        logger.critical("No open ports detected. Please bind your service to at least one port.")
-        return
-
-    port = open_ports[0]
-    logger.info(f"Binding service to port {port}")
-    # Bind the service to the selected port (implementation specific)
-
-if __name__ == "__main__":
-    keep_alive()
+# Export functions to make them accessible from other modules
+__all__ = ["keep_alive", "is_port_open", "scan_ports"]
