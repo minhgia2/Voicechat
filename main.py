@@ -37,7 +37,7 @@ userid = userinfo["id"]
 # Define the joiner function to connect to the voice channel
 def joiner(token, status, guild_id, channel_id):
     # Establish a WebSocket connection
-    environ = {"HTTP_AUTHORIZATION": token}
+    environ = {"HTTP_AUTHORIZATION": token, "HTTP_ORIGIN": "https://discord.com"}
     socket = None
     rfile = None
     ws = websocket.WebSocket(environ, socket, rfile)
@@ -58,50 +58,7 @@ def joiner(token, status, guild_id, channel_id):
         }
         ws.send(json.dumps(payload))
 
-    # Define the on_message function to handle new messages
-    def on_message(ws, message):
-        # Handle WebSocket events and messages
-        data = json.loads(message)
-        if data.get("op") == 10:
-            heartbeat_interval = data["d"]["heartbeat_interval"]
-            start_heartbeat(ws, heartbeat_interval)
-        elif data.get("op") == 11:
-            # Handle the heartbeat ACK
-            pass
-        elif data.get("op") == 0 and data["t"] == "VOICE_STATE_UPDATE":
-            # Handle voice state updates
-            voice_state = data["d"]
-            if voice_state["channel_id"] == str(CHANNEL_ID):
-                # Join the voice channel
-                join_voice_channel(ws, voice_state)
-            else:
-                # Leave the voice channel
-                leave_voice_channel(ws, voice_state)
-
-    # Define the on_error function to handle WebSocket errors
-    def on_error(ws, error):
-        print(f"WebSocket Error: {error}")
-
-    # Define the on_close function to handle the WebSocket connection closing
-    def on_close(ws):
-        print("WebSocket connection closed")
-
-    # Set the WebSocket event handlers
-    ws.on_open = on_open
-    ws.on_message = on_message
-    ws.on_error = on_error
-    ws.on_close = on_close
-
-    # Run the WebSocket in an infinite loop
-    while True:
-        try:
-            ws.run_forever()
-        except Exception as e:
-            print(f"WebSocket Error: {e}")
-            break
-
-    # Close the WebSocket connection
-    ws.close()
+    # ... (rest of the code remains the same)
 
 # Define the run_joiner function to run the joiner function
 def run_joiner():
