@@ -1,16 +1,11 @@
-import asyncio
-import random
 import os
 import sys
 import json
 import time
 import requests
-from datetime import datetime
-from websocket import WebSocket, WebSocketException
+import websocket
 from keep_alive import keep_alive
 
-async def joiner(usertoken, status):
-    ws = WebSocket()
 status = "idle" #online/dnd/idle
 
 GUILD_ID = 1081611251462975528
@@ -37,7 +32,7 @@ userid = userinfo["id"]
 
 def joiner(token, status):
     ws = websocket.WebSocket()
-    ws.connect('wss://gateway.discord.gg/?v=10&encoding=json')
+    ws.connect('wss://gateway.discord.gg/?v=9&encoding=json')
     start = json.loads(ws.recv())
     heartbeat = start['d']['heartbeat_interval']
     auth = {"op": 2,"d": {"token": token,"properties": {"$os": "Windows 10","$browser": "Google Chrome","$device": "Windows"},"presence": {"status": status,"afk": False}},"s": None,"t": None}
