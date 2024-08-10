@@ -2,4 +2,3 @@ requests
 websocket
 websocket-client
 Flask
-Node
