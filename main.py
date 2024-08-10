@@ -2,10 +2,14 @@ import os
 import sys
 import json
 import time
-import requests
+import requests  # Import requests library
 import websockets
 import asyncio
 from keep_alive import keep_alive
+
+# Import Discord.py libraries
+import discord
+from discord.ext import commands
 
 status = "idle" #online/dnd/idle
 
@@ -31,12 +35,38 @@ username = userinfo["username"]
 discriminator = userinfo["discriminator"]
 userid = userinfo["id"]
 
+# Create the bot instance
+intents = discord.Intents.default()  # Start with default intents
+intents.members = True  # Enable the 'members' intent (for fetching members)
+intents.message_content = True #enable message content
+
+bot = commands.Bot(command_prefix="!", intents=intents) 
+
 async def joiner(token, status):
     try:
         async with websockets.connect('wss://gateway.discord.gg/?v=9&encoding=json') as ws:
             start = json.loads(await ws.recv())
             heartbeat = start['d']['heartbeat_interval']
-            auth = {"op": 2,"d": {"token": token,"properties": {"$os": "Windows 10","$browser": "Google Chrome","$device": "Windows"},"presence": {"status": status,"afk": False}},"s": None,"t": None}
+            
+            # Optimized auth dictionary
+            auth = {
+                "op": 2,
+                "d": {
+                    "token": token,
+                    "properties": {
+                        "$os": "Windows", 
+                        "$browser": "Chrome", 
+                        "$device": "PC"
+                    },
+                    "presence": {
+                        "status": status,
+                        "afk": False
+                    }
+                },
+                "s": None,
+                "t": None
+            }
+
             vc = {"op": 4,"d": {"guild_id": GUILD_ID,"channel_id": CHANNEL_ID,"self_mute": SELF_MUTE,"self_deaf": SELF_DEAF}}
             await ws.send(json.dumps(auth))
             await ws.send(json.dumps(vc))
@@ -58,6 +88,18 @@ async def run_joiner():
         except Exception as e:
             print(f"Error in run_joiner(): {e}")
         await asyncio.sleep(30)
+
+# Function to update the bot's status in the backend
+def update_bot_status(new_status):
+    url = 'http://localhost:5000/status'  # Replace with your Flask server's address
+    data = {'status': new_status}
+    response = requests.post(url, json=data)
+    # Handle the response if needed (e.g., check for errors)
+
+@bot.event
+async def on_ready():
+    print(f'Logged in as {bot.user}')
+    update_bot_status('On')  # Send the "On" status to the dashboard
 
 try:
     asyncio.run(run_joiner())
