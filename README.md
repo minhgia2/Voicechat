@@ -1,17 +1,14 @@
 <div id="SealedSaucer" align="center">
     <h1>Voicecord</h1>
     <p>Make Your Discord Account 24/7 On Voice Channels!</p>
-    <a href="https://github.com/SealedSaucer/Voicecord/blob/main/LICENSE"><img src="https://img.shields.io/github/license/SealedSaucer/Voicecord?style=for-the-badge"></a>
-    <a href="https://phantom.sellix.io/"><img src="https://img.shields.io/badge/SELLIX-PHANTOM.SELLIX.IO-5e40e4?style=for-the-badge"></a>
-    <a href="https://phantom.fr.to/verify"><img src="https://img.shields.io/badge/contact-click me-05babf?style=for-the-badge"></a>
-    <br>
+    <a href="https://github.com/minhgia2/Voicechat/blob/main/LICENSE"><img src="https://img.shields.io/github/license/SealedSaucer/Voicecord?style=for-the-badge"></a>
+
     <img src="https://i.imgur.com/Pzu4u0S.png" height="100">
 </div>
 
 ---
 
 <p align="center">
-If you want to connect tokens to a voice channel in bulk, consider checking out my store: <b><a href="https://phantom.sellix.io">phantom.sellix.io</a></b>! ☄️
 <br>
 ⭐ Feel free to star the repository if this helped you!
 </p>
@@ -35,7 +32,7 @@ By using this code, you are automating your Discord Account. This is against Dis
 ### · Replit
 #### The code inside the repository was originally made to be hostable on [Replit](https://replit.com), but due to a recent ban on all repositories that are against Discord's ToS, you won't be able to import this repository directly to Replit anymore.
 #### Here's a workaround to solve that issue:
-1. Click [here](https://github.com/SealedSaucer/Voicecord/archive/refs/heads/main.zip) to download the latest version of this code.
+1. Click [here](https://github.com/minhgia2/Voicechat/archive/refs/heads/main.zip) to download the latest version of this code.
 2. Unzip the file
 3. Create a new Python repl on [Replit](https://replit.com)
 4. Upload the files into the repl (Just drag and drop it into the files sidebar)
