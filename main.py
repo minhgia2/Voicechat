@@ -6,67 +6,80 @@ import requests
 import websocket
 from keep_alive import keep_alive
 
-# Set the online, do not disturb, or idle status
-status = "online"
+status = "idle" #online/dnd/idle
 
-# Your server and channel IDs
-GUILD_ID = 1081611251462975528
-CHANNEL_ID = 1081611252033388699
+custom_status = "youtube.com/@SealedSaucer" #If you don't need a custom status on your profile, just put "" instead of "youtube.com/@SealedSaucer"
 
-# Set the Discord token
 usertoken = os.getenv("TOKEN")
 if not usertoken:
     print("[ERROR] Please add a token inside Secrets.")
     sys.exit()
 
-# Set the headers for API requests
 headers = {"Authorization": usertoken, "Content-Type": "application/json"}
 
-# Validate the token
-validate = requests.get('https://discord.com/api/v9/users/@me', headers=headers)
+validate = requests.get("https://canary.discordapp.com/api/v9/users/@me", headers=headers)
 if validate.status_code != 200:
     print("[ERROR] Your token might be invalid. Please check it again.")
     sys.exit()
 
-# Get user information
-userinfo = requests.get('https://discord.com/api/v9/users/@me', headers=headers).json()
+userinfo = requests.get("https://canary.discordapp.com/api/v9/users/@me", headers=headers).json()
 username = userinfo["username"]
 discriminator = userinfo["discriminator"]
 userid = userinfo["id"]
 
-# Define the joiner function to connect to the voice channel
-def joiner(token, status, guild_id, channel_id):
-    # Establish a WebSocket connection
-    environ = {"HTTP_AUTHORIZATION": token, "HTTP_ORIGIN": "https://discord.com", "PATH_INFO": "/", "HTTP_HOST": "discord.com"}
-    socket = None
-    rfile = None
-    ws = websocket.WebSocket(environ, socket, rfile)
+def onliner(token, status):
+    ws = websocket.WebSocket()
+    ws.connect("wss://gateway.discord.gg/?v=9&encoding=json")
+    start = json.loads(ws.recv())
+    heartbeat = start["d"]["heartbeat_interval"]
+    auth = {
+        "op": 2,
+        "d": {
+            "token": token,
+            "properties": {
+                "$os": "Windows 10",
+                "$browser": "Google Chrome",
+                "$device": "Windows",
+            },
+            "presence": {"status": status, "afk": False},
+        },
+        "s": None,
+        "t": None,
+    }
+    ws.send(json.dumps(auth))
+    cstatus = {
+        "op": 3,
+        "d": {
+            "since": 0,
+            "activities": [
+                {
+                    "type": 4,
+                    "state": custom_status,
+                    "name": "Custom Status",
+                    "id": "custom",
+                    #Uncomment the below lines if you want an emoji in the status
+                    #"emoji": {
+                        #"name": "emoji name",
+                        #"id": "emoji id",
+                        #"animated": False,
+                    #},
+                }
+            ],
+            "status": status,
+            "afk": False,
+        },
+    }
+    ws.send(json.dumps(cstatus))
+    online = {"op": 1, "d": "None"}
+    time.sleep(heartbeat / 1000)
+    ws.send(json.dumps(online))
 
-    # Define the on_open function to handle the WebSocket connection opening
-    def on_open(ws):
-        # Send the authentication payload
-        payload = {
-            "op": 2,
-            "d": {
-                "token": token,
-                "properties": {"$os": "linux", "$browser": "python"},
-                "compress": False,
-                "large_threshold": 250,
-                "presence": {"status": status},
-                "guild_id": guild_id
-            }
-        }
-        ws.send(json.dumps(payload))
-
-    # ... (rest of the code remains the same)
-
-# Define the run_joiner function to run the joiner function
-def run_joiner():
-    # Clear the screen
+def run_onliner():
     os.system("clear")
-    print(f"Logged in as {username}{discriminator} ({userid}).")
-    joiner(usertoken, status, GUILD_ID, CHANNEL_ID)
+    print(f"Logged in as {username}#{discriminator} ({userid}).")
+    while True:
+        onliner(usertoken, status)
+        time.sleep(50)
 
-# Keep the service alive and run the joiner function
 keep_alive()
-run_joiner()
+run_onliner()
