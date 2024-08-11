@@ -13,8 +13,8 @@ from discord.ext import commands
 
 status = "idle" #online/dnd/idle
 
-GUILD_ID = 1081611251462975528
-CHANNEL_ID = 1081611252033388699
+GUILD_ID = 
+CHANNEL_ID = 
 SELF_MUTE = True
 SELF_DEAF = False
 
